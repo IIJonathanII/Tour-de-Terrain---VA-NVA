@@ -1,0 +1,776 @@
+<h2 class="sr-only">Application d'analyse Rouge/Vert pour visites terrain avec chronométrage, précision par segment, et capture photo terrain.</h2>
+
+<style>
+.rg-app { font-family: var(--font-sans); padding: 1rem 0; }
+.rg-screen { display: none; }
+.rg-screen.active { display: block; }
+.rg-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.rg-title { font-size: 18px; font-weight: 500; margin: 0; }
+.rg-subtitle { font-size: 13px; color: var(--color-text-secondary); margin: 2px 0 0; }
+.rg-field { margin-bottom: 12px; }
+.rg-field label { display: block; font-size: 13px; color: var(--color-text-secondary); margin-bottom: 4px; }
+.rg-btn-primary { width: 100%; padding: 12px; background: var(--color-background-info); color: var(--color-text-info); border: 0.5px solid var(--color-border-info); border-radius: var(--border-radius-md); font-size: 15px; font-weight: 500; cursor: pointer; }
+.rg-btn-primary:hover { filter: brightness(0.97); }
+.rg-btn-primary:active { transform: scale(0.98); }
+.rg-btn-ghost { padding: 8px 12px; background: transparent; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); font-size: 13px; cursor: pointer; color: var(--color-text-primary); }
+.rg-btn-ghost:hover { background: var(--color-background-secondary); }
+.rg-timer-display { text-align: center; margin: 1.5rem 0 1rem; }
+.rg-timer-big { font-size: 32px; font-weight: 500; font-family: var(--font-mono); letter-spacing: 1px; }
+.rg-current-cat { font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; min-height: 18px; }
+.rg-current-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; margin-top: 6px; }
+
+/* Panneau précision actif */
+.rg-active-panel { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 12px; margin-bottom: 12px; border-left: 3px solid var(--color-text-primary); }
+.rg-active-panel.va { border-left-color: #639922; background: #F4FAEC; }
+.rg-active-panel.nva { border-left-color: #E24B4A; background: #FDF3F3; }
+.rg-active-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 12px; font-weight: 500; }
+.rg-active-header .rg-dot { width: 8px; height: 8px; border-radius: 50%; }
+.rg-precision-input { width: 100%; padding: 8px 10px; font-size: 13px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); box-sizing: border-box; font-family: var(--font-sans); background: var(--color-background-primary); color: var(--color-text-primary); }
+.rg-precision-input::placeholder { color: var(--color-text-tertiary); font-style: italic; }
+.rg-quick-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.rg-quick-tag { padding: 3px 8px; font-size: 11px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 999px; cursor: pointer; color: var(--color-text-secondary); }
+.rg-quick-tag:hover { background: var(--color-background-tertiary); color: var(--color-text-primary); }
+.rg-photo-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.rg-photo-btn { padding: 6px 10px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); font-size: 12px; cursor: pointer; color: var(--color-text-primary); display: inline-flex; align-items: center; gap: 4px; }
+.rg-photo-btn:hover { background: var(--color-background-tertiary); }
+.rg-photo-hidden { display: none; }
+.rg-photo-thumbs { display: flex; flex-wrap: wrap; gap: 4px; }
+.rg-photo-thumb { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; cursor: pointer; border: 0.5px solid var(--color-border-tertiary); }
+.rg-photo-thumb-large { width: 60px; height: 60px; }
+
+.rg-va-btn { width: 100%; padding: 16px; background: #EAF3DE; color: #173404; border: 0.5px solid #639922; border-radius: var(--border-radius-md); font-size: 15px; font-weight: 500; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.rg-va-btn.active { background: #97C459; color: #173404; border: 2px solid #3B6D11; padding: 15px; }
+.rg-va-btn:active { transform: scale(0.99); }
+.rg-muda-label { font-size: 12px; color: var(--color-text-secondary); margin: 8px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.rg-muda-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
+.rg-muda-btn { padding: 10px 6px; background: #FCEBEB; color: #501313; border: 0.5px solid #E24B4A; border-radius: var(--border-radius-md); font-size: 12px; font-weight: 500; cursor: pointer; text-align: center; line-height: 1.3; }
+.rg-muda-btn.active { background: #F09595; color: #501313; border: 2px solid #A32D2D; padding: 9px 5px; }
+.rg-muda-btn:active { transform: scale(0.97); }
+.rg-stop-btn { width: 100%; padding: 10px; background: var(--color-background-secondary); color: var(--color-text-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); font-size: 13px; font-weight: 500; cursor: pointer; margin-top: 6px; }
+
+.rg-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 1rem 0; }
+.rg-stat-card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px; }
+.rg-stat-label { font-size: 12px; color: var(--color-text-secondary); }
+.rg-stat-value { font-size: 22px; font-weight: 500; margin-top: 2px; }
+.rg-histo { margin: 1rem 0; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px; }
+.rg-histo-title { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 10px; font-weight: 500; }
+.rg-histo-bar { display: flex; height: 24px; border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+.rg-prop-bar { display: flex; height: 32px; border-radius: 4px; overflow: hidden; margin-bottom: 10px; border: 0.5px solid var(--color-border-tertiary); }
+.rg-prop-seg { height: 100%; min-width: 1px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; color: white; overflow: hidden; }
+.rg-histo-seg { height: 100%; min-width: 1px; }
+.rg-histo-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--color-text-tertiary); margin-top: 4px; }
+.rg-prop-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin-top: 8px; }
+.rg-prop-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--color-text-secondary); }
+.rg-prop-legend-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.rg-prop-legend-val { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--color-text-primary); }
+.rg-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.rg-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--color-text-secondary); }
+.rg-legend-sq { width: 10px; height: 10px; border-radius: 2px; }
+.rg-muda-breakdown { margin-top: 12px; }
+.rg-muda-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+.rg-muda-row-label { flex: 0 0 110px; color: var(--color-text-secondary); }
+.rg-muda-row-bar { flex: 1; height: 14px; background: var(--color-background-secondary); border-radius: 2px; position: relative; overflow: hidden; }
+.rg-muda-row-fill { height: 100%; }
+.rg-muda-row-val { flex: 0 0 70px; text-align: right; font-variant-numeric: tabular-nums; }
+.rg-section-divider { height: 0.5px; background: var(--color-border-tertiary); margin: 14px 0; }
+.rg-session-list { margin-top: 1rem; }
+.rg-session-item { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px; margin-bottom: 8px; cursor: pointer; }
+.rg-session-item:hover { background: var(--color-background-secondary); }
+.rg-session-name { font-size: 14px; font-weight: 500; }
+.rg-session-meta { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+.rg-empty { text-align: center; padding: 2rem 1rem; color: var(--color-text-tertiary); font-size: 13px; }
+.rg-segments-log { margin-top: 1rem; max-height: 220px; overflow-y: auto; }
+.rg-seg-row { padding: 8px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 12px; }
+.rg-seg-row:last-child { border-bottom: none; }
+.rg-seg-main { display: flex; align-items: center; gap: 8px; }
+.rg-seg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.rg-seg-cat { flex: 1; font-weight: 500; }
+.rg-seg-dur { font-variant-numeric: tabular-nums; color: var(--color-text-secondary); flex-shrink: 0; }
+.rg-seg-precision { margin-left: 16px; margin-top: 4px; color: var(--color-text-secondary); font-size: 12px; }
+.rg-seg-photos { display: flex; gap: 4px; margin-left: 16px; margin-top: 6px; flex-wrap: wrap; }
+.rg-actions-row { display: flex; gap: 8px; margin-top: 1rem; }
+.rg-actions-row > button { flex: 1; }
+.rg-tabs { display: flex; gap: 4px; margin-bottom: 1rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.rg-tab { padding: 8px 12px; font-size: 13px; cursor: pointer; border: none; background: transparent; color: var(--color-text-secondary); border-bottom: 2px solid transparent; margin-bottom: -0.5px; }
+.rg-tab.active { color: var(--color-text-primary); border-bottom-color: var(--color-text-primary); font-weight: 500; }
+.rg-danger-btn { background: transparent; color: var(--color-text-danger); border: 0.5px solid var(--color-border-secondary); padding: 8px 12px; border-radius: var(--border-radius-md); font-size: 13px; cursor: pointer; }
+.rg-input { width: 100%; padding: 8px 10px; font-size: 14px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); box-sizing: border-box; font-family: var(--font-sans); background: var(--color-background-primary); color: var(--color-text-primary); }
+
+/* Lightbox photo */
+.rg-lightbox { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 100; }
+.rg-lightbox.show { display: flex; }
+.rg-lightbox img { max-width: 95%; max-height: 80vh; border-radius: 4px; }
+.rg-lightbox-close { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+.rg-app { position: relative; }
+</style>
+
+<div class="rg-app">
+
+  <div id="rg-screen-home" class="rg-screen active">
+    <div class="rg-header">
+      <div>
+        <h2 class="rg-title">Analyse Rouge/Vert</h2>
+        <p class="rg-subtitle">Visite terrain — Lean</p>
+      </div>
+    </div>
+    <div class="rg-tabs">
+      <button class="rg-tab active" data-tab="new">Nouvelle session</button>
+      <button class="rg-tab" data-tab="history">Historique</button>
+    </div>
+
+    <div id="rg-tab-new">
+      <div class="rg-field">
+        <label>Nom de la session</label>
+        <input type="text" id="rg-input-name" class="rg-input" placeholder="Ex. Préparation levage cycle 1" />
+      </div>
+      <div class="rg-field">
+        <label>Lieu / poste observé</label>
+        <input type="text" id="rg-input-place" class="rg-input" placeholder="Ex. Massy magasin — zone picking" />
+      </div>
+      <div class="rg-field">
+        <label>Date</label>
+        <input type="date" id="rg-input-date" class="rg-input" />
+      </div>
+      <button class="rg-btn-primary" id="rg-start-btn">Commencer l'observation</button>
+    </div>
+
+    <div id="rg-tab-history" style="display:none;">
+      <div id="rg-session-list" class="rg-session-list"></div>
+    </div>
+  </div>
+
+  <div id="rg-screen-record" class="rg-screen">
+    <div class="rg-header">
+      <div>
+        <h2 class="rg-title" id="rg-rec-name">Session</h2>
+        <p class="rg-subtitle" id="rg-rec-meta">Lieu — Date</p>
+      </div>
+      <button class="rg-btn-ghost" id="rg-end-btn">Terminer</button>
+    </div>
+
+    <div class="rg-timer-display">
+      <div class="rg-timer-big" id="rg-timer">00:00</div>
+      <div class="rg-current-cat">
+        <span id="rg-current-pill" class="rg-current-pill" style="display:none;"></span>
+      </div>
+    </div>
+
+    <div id="rg-active-panel" class="rg-active-panel" style="display:none;">
+      <div class="rg-active-header">
+        <span class="rg-dot" id="rg-active-dot"></span>
+        <span id="rg-active-name">—</span>
+      </div>
+      <input type="text" id="rg-precision-input" class="rg-precision-input" placeholder="Précision : décris ce que tu observes…" />
+      <div class="rg-quick-tags" id="rg-quick-tags"></div>
+      <div class="rg-photo-row">
+        <label class="rg-photo-btn" for="rg-photo-input">
+          <i class="ti ti-camera" aria-hidden="true" style="font-size:14px;"></i>
+          Photo
+        </label>
+        <input type="file" accept="image/*" capture="environment" id="rg-photo-input" class="rg-photo-hidden" />
+        <div class="rg-photo-thumbs" id="rg-photo-thumbs"></div>
+      </div>
+    </div>
+
+    <button class="rg-va-btn" id="rg-btn-va">
+      <i class="ti ti-circle-check" aria-hidden="true" style="font-size:18px;"></i>
+      Valeur Ajoutée
+    </button>
+
+    <div class="rg-muda-label">Non-Valeur Ajoutée — 7 muda</div>
+    <div class="rg-muda-grid">
+      <button class="rg-muda-btn" data-muda="surproduction">Surproduction</button>
+      <button class="rg-muda-btn" data-muda="attente">Attente</button>
+      <button class="rg-muda-btn" data-muda="transport">Transport</button>
+      <button class="rg-muda-btn" data-muda="surtraitement">Sur-traitement</button>
+      <button class="rg-muda-btn" data-muda="stocks">Stocks</button>
+      <button class="rg-muda-btn" data-muda="mouvements">Mouvements</button>
+      <button class="rg-muda-btn" data-muda="defauts" style="grid-column: span 2;">Défauts</button>
+    </div>
+
+    <button class="rg-stop-btn" id="rg-stop-btn">Pause / Stop segment</button>
+
+    <div class="rg-segments-log" id="rg-segments-log"></div>
+  </div>
+
+  <div id="rg-screen-results" class="rg-screen">
+    <div class="rg-header">
+      <div>
+        <h2 class="rg-title" id="rg-res-name">Résultats</h2>
+        <p class="rg-subtitle" id="rg-res-meta">Lieu — Date</p>
+      </div>
+      <button class="rg-btn-ghost" id="rg-back-home">Accueil</button>
+    </div>
+
+    <div class="rg-stat-grid">
+      <div class="rg-stat-card">
+        <div class="rg-stat-label">Durée totale</div>
+        <div class="rg-stat-value" id="rg-res-total">0s</div>
+      </div>
+      <div class="rg-stat-card">
+        <div class="rg-stat-label">VA / NVA</div>
+        <div class="rg-stat-value" id="rg-res-ratio">— / —</div>
+      </div>
+    </div>
+
+    <div class="rg-histo">
+      <div class="rg-histo-title">Proportion VA vs NVA (détail muda)</div>
+      <div class="rg-prop-bar" id="rg-prop-bar"></div>
+      <div class="rg-prop-legend" id="rg-prop-legend"></div>
+
+      <div class="rg-section-divider"></div>
+
+      <div class="rg-histo-title">Histogramme chronologique</div>
+      <div class="rg-histo-bar" id="rg-histo-bar"></div>
+      <div class="rg-histo-axis">
+        <span>0:00</span>
+        <span id="rg-histo-end">0:00</span>
+      </div>
+      <div class="rg-legend">
+        <div class="rg-legend-item"><span class="rg-legend-sq" style="background:#639922;"></span>VA</div>
+        <div class="rg-legend-item"><span class="rg-legend-sq" style="background:#E24B4A;"></span>NVA (muda)</div>
+      </div>
+
+      <div class="rg-section-divider"></div>
+
+      <div class="rg-histo-title">Détail des muda</div>
+      <div class="rg-muda-breakdown" id="rg-muda-breakdown"></div>
+    </div>
+
+    <div class="rg-segments-log" id="rg-results-log" style="max-height:340px;"></div>
+
+    <div class="rg-actions-row">
+      <button class="rg-btn-ghost" id="rg-export-csv"><i class="ti ti-download" aria-hidden="true" style="font-size:14px; vertical-align:-2px; margin-right:4px;"></i>CSV</button>
+      <button class="rg-danger-btn" id="rg-delete-session"><i class="ti ti-trash" aria-hidden="true" style="font-size:14px; vertical-align:-2px; margin-right:4px;"></i>Supprimer</button>
+    </div>
+  </div>
+
+  <div id="rg-lightbox" class="rg-lightbox">
+    <button class="rg-lightbox-close" id="rg-lightbox-close">Fermer</button>
+    <img id="rg-lightbox-img" alt="" />
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const MUDA_LABELS = {
+    'va': 'Valeur Ajoutée',
+    'surproduction': 'Surproduction',
+    'attente': 'Attente',
+    'transport': 'Transport',
+    'surtraitement': 'Sur-traitement',
+    'stocks': 'Stocks',
+    'mouvements': 'Mouvements',
+    'defauts': 'Défauts'
+  };
+  const MUDA_COLORS = {
+    'va': '#639922',
+    'surproduction': '#E24B4A',
+    'attente': '#D85A30',
+    'transport': '#EF9F27',
+    'surtraitement': '#A32D2D',
+    'stocks': '#993556',
+    'mouvements': '#D4537E',
+    'defauts': '#791F1F'
+  };
+  const MUDA_KEYS = ['surproduction','attente','transport','surtraitement','stocks','mouvements','defauts'];
+  const ALL_KEYS = ['va', ...MUDA_KEYS];
+
+  // Suggestions rapides par catégorie
+  const QUICK_TAGS = {
+    'va': ['Assemblage', 'Serrage', 'Contrôle qualité', 'Soudure', 'Manipulation pièce'],
+    'surproduction': ['Production en avance', 'Lot trop grand', 'Doc imprimé en trop'],
+    'attente': ['Attente pièce', 'Attente validation', 'Attente engin', 'Attente info'],
+    'transport': ['Pièce déplacée', 'Va-et-vient atelier', 'Transfert inutile'],
+    'surtraitement': ['Double saisie', 'Reporting redondant', 'Finition excessive'],
+    'stocks': ['Stock intermédiaire', 'Encours élevé', 'Surstockage'],
+    'mouvements': ['Cherche outil', 'Déplacement zone', 'Geste répétitif'],
+    'defauts': ['Reprise', 'Erreur saisie', 'Pièce non conforme', 'Retouche']
+  };
+
+  let currentSession = null;
+  let timerInterval = null;
+  let segmentStart = null;
+  let currentCategory = null;
+  let currentPrecision = '';
+  let currentPhotos = []; // base64 strings du segment en cours
+  let viewingSessionId = null;
+
+  const $ = id => document.getElementById(id);
+
+  function fmtTime(seconds){
+    seconds = Math.max(0, Math.round(seconds));
+    const m = Math.floor(seconds/60);
+    const s = seconds % 60;
+    return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  }
+
+  function showScreen(name){
+    document.querySelectorAll('.rg-screen').forEach(el => el.classList.remove('active'));
+    $('rg-screen-' + name).classList.add('active');
+  }
+
+  function escapeHtml(s){
+    return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  async function loadSessions(){
+    try {
+      const res = await window.storage.list('session:');
+      if (!res || !res.keys) return [];
+      const sessions = [];
+      for (const k of res.keys){
+        try {
+          const r = await window.storage.get(k);
+          if (r && r.value) sessions.push(JSON.parse(r.value));
+        } catch(e){}
+      }
+      sessions.sort((a,b) => b.createdAt - a.createdAt);
+      return sessions;
+    } catch(e){ return []; }
+  }
+
+  async function saveSession(s){
+    try {
+      await window.storage.set('session:' + s.id, JSON.stringify(s));
+    } catch(e){ console.error('Save error', e); }
+  }
+
+  async function deleteSession(id){
+    try { await window.storage.delete('session:' + id); } catch(e){}
+  }
+
+  async function renderHistory(){
+    const list = $('rg-session-list');
+    const sessions = await loadSessions();
+    if (!sessions.length){
+      list.innerHTML = '<div class="rg-empty">Aucune session sauvegardée pour le moment.</div>';
+      return;
+    }
+    list.innerHTML = sessions.map(s => {
+      const total = (s.segments||[]).reduce((a,seg)=>a+seg.duration,0);
+      return `<div class="rg-session-item" data-id="${s.id}">
+        <div class="rg-session-name">${escapeHtml(s.name || 'Sans nom')}</div>
+        <div class="rg-session-meta">${escapeHtml(s.place || '—')} · ${escapeHtml(s.date || '')} · ${fmtTime(total)}</div>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.rg-session-item').forEach(el => {
+      el.addEventListener('click', () => openResults(el.getAttribute('data-id')));
+    });
+  }
+
+  function startSession(){
+    const name = $('rg-input-name').value.trim() || 'Session sans nom';
+    const place = $('rg-input-place').value.trim();
+    const date = $('rg-input-date').value;
+    currentSession = {
+      id: 'sess_' + Date.now(),
+      name, place, date,
+      createdAt: Date.now(),
+      segments: []
+    };
+    $('rg-rec-name').textContent = name;
+    $('rg-rec-meta').textContent = (place || '—') + ' · ' + (date || new Date().toISOString().slice(0,10));
+    $('rg-timer').textContent = '00:00';
+    $('rg-current-pill').style.display = 'none';
+    $('rg-active-panel').style.display = 'none';
+    currentCategory = null;
+    currentPrecision = '';
+    currentPhotos = [];
+    segmentStart = null;
+    if (timerInterval) clearInterval(timerInterval);
+    renderSegmentsLog();
+    showScreen('record');
+  }
+
+  function totalElapsed(){
+    let total = currentSession.segments.reduce((a,s)=>a+s.duration,0);
+    if (segmentStart) total += (Date.now() - segmentStart)/1000;
+    return total;
+  }
+
+  function tickTimer(){
+    $('rg-timer').textContent = fmtTime(totalElapsed());
+  }
+
+  function commitSegment(){
+    if (!segmentStart || !currentCategory) return;
+    const duration = (Date.now() - segmentStart) / 1000;
+    if (duration < 0.3) {
+      segmentStart = null;
+      currentPrecision = '';
+      currentPhotos = [];
+      return;
+    }
+    const precision = ($('rg-precision-input').value || currentPrecision || '').trim();
+    currentSession.segments.push({
+      category: currentCategory,
+      duration: duration,
+      precision: precision,
+      photos: currentPhotos.slice(),
+      timestamp: segmentStart
+    });
+    $('rg-precision-input').value = '';
+    currentPrecision = '';
+    currentPhotos = [];
+    renderPhotoThumbs();
+    segmentStart = null;
+    renderSegmentsLog();
+    saveSession(currentSession);
+  }
+
+  function showActivePanel(cat){
+    const panel = $('rg-active-panel');
+    panel.style.display = 'block';
+    panel.classList.toggle('va', cat === 'va');
+    panel.classList.toggle('nva', cat !== 'va');
+    $('rg-active-dot').style.background = MUDA_COLORS[cat];
+    $('rg-active-name').textContent = MUDA_LABELS[cat];
+    $('rg-precision-input').placeholder = cat === 'va'
+      ? 'Précise l\'intervention à valeur ajoutée…'
+      : 'Précise le gaspillage observé…';
+    $('rg-precision-input').value = currentPrecision || '';
+    renderQuickTags(cat);
+    renderPhotoThumbs();
+    setTimeout(() => $('rg-precision-input').focus(), 50);
+  }
+
+  function hideActivePanel(){
+    $('rg-active-panel').style.display = 'none';
+    $('rg-precision-input').value = '';
+    currentPrecision = '';
+    currentPhotos = [];
+    renderPhotoThumbs();
+  }
+
+  function renderQuickTags(cat){
+    const tags = QUICK_TAGS[cat] || [];
+    $('rg-quick-tags').innerHTML = tags.map(t =>
+      `<span class="rg-quick-tag" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</span>`
+    ).join('');
+    $('rg-quick-tags').querySelectorAll('.rg-quick-tag').forEach(el => {
+      el.addEventListener('click', () => {
+        const t = el.getAttribute('data-tag');
+        const input = $('rg-precision-input');
+        input.value = input.value ? (input.value + ' / ' + t) : t;
+        currentPrecision = input.value;
+        input.focus();
+      });
+    });
+  }
+
+  function renderPhotoThumbs(){
+    const c = $('rg-photo-thumbs');
+    c.innerHTML = currentPhotos.map((p,i) =>
+      `<img src="${p}" class="rg-photo-thumb" data-idx="${i}" alt="Photo segment" />`
+    ).join('');
+    c.querySelectorAll('img').forEach(img => {
+      img.addEventListener('click', () => openLightbox(img.src));
+    });
+  }
+
+  function setCategory(cat){
+    if (currentCategory === cat){
+      // Re-tap même catégorie : on stoppe le segment
+      commitSegment();
+      currentCategory = null;
+      updateActiveButtons();
+      $('rg-current-pill').style.display = 'none';
+      hideActivePanel();
+      if (timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+      tickTimer();
+      return;
+    }
+    if (segmentStart) commitSegment();
+    currentCategory = cat;
+    segmentStart = Date.now();
+    updateActiveButtons();
+    const pill = $('rg-current-pill');
+    pill.style.display = 'inline-block';
+    pill.textContent = MUDA_LABELS[cat];
+    pill.style.background = cat === 'va' ? '#EAF3DE' : '#FCEBEB';
+    pill.style.color = cat === 'va' ? '#173404' : '#501313';
+    showActivePanel(cat);
+    if (!timerInterval) timerInterval = setInterval(tickTimer, 250);
+  }
+
+  function updateActiveButtons(){
+    $('rg-btn-va').classList.toggle('active', currentCategory === 'va');
+    document.querySelectorAll('.rg-muda-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-muda') === currentCategory);
+    });
+  }
+
+  function stopSegment(){
+    if (segmentStart) commitSegment();
+    currentCategory = null;
+    updateActiveButtons();
+    $('rg-current-pill').style.display = 'none';
+    hideActivePanel();
+    if (timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+    tickTimer();
+  }
+
+  function renderSegmentsLog(){
+    const log = $('rg-segments-log');
+    const segs = currentSession.segments;
+    if (!segs.length){
+      log.innerHTML = '<div class="rg-empty" style="padding:1rem;">Pas encore de segment enregistré.</div>';
+      return;
+    }
+    log.innerHTML = segs.slice().reverse().map(s => {
+      const photosHtml = (s.photos && s.photos.length)
+        ? `<div class="rg-seg-photos">${s.photos.map((p,i)=>`<img src="${p}" class="rg-photo-thumb" data-photo="${escapeHtml(p)}" alt="Photo" />`).join('')}</div>`
+        : '';
+      return `<div class="rg-seg-row">
+        <div class="rg-seg-main">
+          <span class="rg-seg-dot" style="background:${MUDA_COLORS[s.category]};"></span>
+          <span class="rg-seg-cat">${MUDA_LABELS[s.category]}</span>
+          <span class="rg-seg-dur">${fmtTime(s.duration)}</span>
+        </div>
+        ${s.precision ? `<div class="rg-seg-precision">${escapeHtml(s.precision)}</div>` : ''}
+        ${photosHtml}
+      </div>`;
+    }).join('');
+    log.querySelectorAll('.rg-seg-photos img').forEach(img => {
+      img.addEventListener('click', () => openLightbox(img.getAttribute('data-photo')));
+    });
+  }
+
+  async function endSession(){
+    if (segmentStart) commitSegment();
+    if (timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+    hideActivePanel();
+    await saveSession(currentSession);
+    viewingSessionId = currentSession.id;
+    renderResults(currentSession);
+    showScreen('results');
+  }
+
+  async function openResults(id){
+    const r = await window.storage.get('session:' + id);
+    if (!r || !r.value) return;
+    const s = JSON.parse(r.value);
+    viewingSessionId = id;
+    renderResults(s);
+    showScreen('results');
+  }
+
+  function renderResults(s){
+    $('rg-res-name').textContent = s.name || 'Session';
+    $('rg-res-meta').textContent = (s.place || '—') + ' · ' + (s.date || '');
+    const total = s.segments.reduce((a,seg)=>a+seg.duration,0);
+    const vaTime = s.segments.filter(seg=>seg.category==='va').reduce((a,seg)=>a+seg.duration,0);
+    const nvaTime = total - vaTime;
+    $('rg-res-total').textContent = fmtTime(total);
+    const vaPct = total>0 ? Math.round(vaTime/total*100) : 0;
+    const nvaPct = total>0 ? 100 - vaPct : 0;
+    $('rg-res-ratio').textContent = vaPct + '% / ' + nvaPct + '%';
+
+    const sums = {};
+    ALL_KEYS.forEach(k => sums[k] = 0);
+    s.segments.forEach(seg => { sums[seg.category] = (sums[seg.category]||0) + seg.duration; });
+
+    const propBar = $('rg-prop-bar');
+    const propLegend = $('rg-prop-legend');
+    const propOrder = ALL_KEYS.filter(k => sums[k] > 0);
+    if (total > 0 && propOrder.length){
+      propBar.innerHTML = propOrder.map(k => {
+        const pct = sums[k]/total*100;
+        const pctRounded = Math.round(pct);
+        const label = pct >= 8 ? pctRounded + '%' : '';
+        return `<div class="rg-prop-seg" style="width:${pct}%; background:${MUDA_COLORS[k]};" title="${MUDA_LABELS[k]} — ${fmtTime(sums[k])} (${pctRounded}%)">${label}</div>`;
+      }).join('');
+      propLegend.innerHTML = propOrder.map(k => {
+        const pct = Math.round(sums[k]/total*100);
+        return `<div class="rg-prop-legend-item">
+          <span class="rg-prop-legend-sq" style="background:${MUDA_COLORS[k]};"></span>
+          <span>${MUDA_LABELS[k]}</span>
+          <span class="rg-prop-legend-val">${pct}%</span>
+        </div>`;
+      }).join('');
+    } else {
+      propBar.innerHTML = '';
+      propLegend.innerHTML = '<div style="font-size:12px;color:var(--color-text-tertiary);">Aucune donnée.</div>';
+    }
+
+    const bar = $('rg-histo-bar');
+    bar.innerHTML = s.segments.map(seg => {
+      const w = total>0 ? (seg.duration/total*100) : 0;
+      return `<div class="rg-histo-seg" style="width:${w}%; background:${MUDA_COLORS[seg.category]};" title="${MUDA_LABELS[seg.category]} — ${fmtTime(seg.duration)}"></div>`;
+    }).join('');
+    $('rg-histo-end').textContent = fmtTime(total);
+
+    const breakdown = $('rg-muda-breakdown');
+    const mudaSums = {};
+    MUDA_KEYS.forEach(k => mudaSums[k] = sums[k] || 0);
+    const maxMuda = Math.max(...Object.values(mudaSums), 1);
+    const activeMuda = MUDA_KEYS.filter(k=>mudaSums[k]>0);
+    if (activeMuda.length){
+      breakdown.innerHTML = activeMuda.map(k => {
+        const w = mudaSums[k]/maxMuda*100;
+        const pct = total>0 ? Math.round(mudaSums[k]/total*100) : 0;
+        return `<div class="rg-muda-row">
+          <div class="rg-muda-row-label">${MUDA_LABELS[k]}</div>
+          <div class="rg-muda-row-bar"><div class="rg-muda-row-fill" style="width:${w}%; background:${MUDA_COLORS[k]};"></div></div>
+          <div class="rg-muda-row-val">${fmtTime(mudaSums[k])} (${pct}%)</div>
+        </div>`;
+      }).join('');
+    } else {
+      breakdown.innerHTML = '<div style="font-size:12px;color:var(--color-text-tertiary);">Aucun muda enregistré.</div>';
+    }
+
+    const log = $('rg-results-log');
+    if (!s.segments.length){
+      log.innerHTML = '<div class="rg-empty">Aucun segment.</div>';
+    } else {
+      log.innerHTML = s.segments.map((seg,i) => {
+        const photosHtml = (seg.photos && seg.photos.length)
+          ? `<div class="rg-seg-photos">${seg.photos.map(p=>`<img src="${p}" class="rg-photo-thumb rg-photo-thumb-large" data-photo="${escapeHtml(p)}" alt="Photo" />`).join('')}</div>`
+          : '';
+        return `<div class="rg-seg-row">
+          <div class="rg-seg-main">
+            <span class="rg-seg-dot" style="background:${MUDA_COLORS[seg.category]};"></span>
+            <span class="rg-seg-cat">${i+1}. ${MUDA_LABELS[seg.category]}</span>
+            <span class="rg-seg-dur">${fmtTime(seg.duration)}</span>
+          </div>
+          ${seg.precision ? `<div class="rg-seg-precision">${escapeHtml(seg.precision)}</div>` : ''}
+          ${photosHtml}
+        </div>`;
+      }).join('');
+      log.querySelectorAll('.rg-seg-photos img').forEach(img => {
+        img.addEventListener('click', () => openLightbox(img.getAttribute('data-photo')));
+      });
+    }
+  }
+
+  function exportCsv(){
+    if (!viewingSessionId) return;
+    window.storage.get('session:' + viewingSessionId).then(r => {
+      if (!r || !r.value) return;
+      const s = JSON.parse(r.value);
+      let csv = 'N°;Catégorie;Durée (s);Durée (mm:ss);Précision;Nb photos\n';
+      s.segments.forEach((seg,i) => {
+        const prec = (seg.precision||'').replace(/"/g,'""').replace(/\n/g,' ');
+        const np = (seg.photos||[]).length;
+        csv += `${i+1};${MUDA_LABELS[seg.category]};${seg.duration.toFixed(1)};${fmtTime(seg.duration)};"${prec}";${np}\n`;
+      });
+      const total = s.segments.reduce((a,seg)=>a+seg.duration,0);
+      const va = s.segments.filter(seg=>seg.category==='va').reduce((a,seg)=>a+seg.duration,0);
+      csv += `\nTotal;;${total.toFixed(1)};${fmtTime(total)};\n`;
+      csv += `VA;;${va.toFixed(1)};${fmtTime(va)};${total>0?Math.round(va/total*100):0}%\n`;
+      csv += `NVA;;${(total-va).toFixed(1)};${fmtTime(total-va)};${total>0?100-Math.round(va/total*100):0}%\n`;
+      csv += `\nDétail par muda;;;;\n`;
+      MUDA_KEYS.forEach(k => {
+        const sum = s.segments.filter(seg=>seg.category===k).reduce((a,seg)=>a+seg.duration,0);
+        const pct = total>0 ? Math.round(sum/total*100) : 0;
+        csv += `${MUDA_LABELS[k]};;${sum.toFixed(1)};${fmtTime(sum)};${pct}%\n`;
+      });
+      const blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (s.name||'session').replace(/[^a-z0-9_-]/gi,'_') + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  async function deleteCurrentSession(){
+    if (!viewingSessionId) return;
+    if (!confirm('Supprimer cette session ? Les photos seront aussi effacées.')) return;
+    await deleteSession(viewingSessionId);
+    viewingSessionId = null;
+    await renderHistory();
+    showScreen('home');
+  }
+
+  // Compression photo : redimensionne à 800px max et qualité jpeg 0.75
+  function compressImage(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 800;
+          let w = img.width, h = img.height;
+          if (w > h && w > MAX){ h = h * (MAX/w); w = MAX; }
+          else if (h > MAX){ w = w * (MAX/h); h = MAX; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.75));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function openLightbox(src){
+    $('rg-lightbox-img').src = src;
+    $('rg-lightbox').classList.add('show');
+  }
+  function closeLightbox(){
+    $('rg-lightbox').classList.remove('show');
+    $('rg-lightbox-img').src = '';
+  }
+
+  // Init
+  $('rg-input-date').value = new Date().toISOString().slice(0,10);
+
+  $('rg-start-btn').addEventListener('click', startSession);
+  $('rg-end-btn').addEventListener('click', endSession);
+  $('rg-back-home').addEventListener('click', async () => {
+    await renderHistory();
+    showScreen('home');
+  });
+  $('rg-btn-va').addEventListener('click', () => setCategory('va'));
+  document.querySelectorAll('.rg-muda-btn').forEach(btn => {
+    btn.addEventListener('click', () => setCategory(btn.getAttribute('data-muda')));
+  });
+  $('rg-stop-btn').addEventListener('click', stopSegment);
+  $('rg-export-csv').addEventListener('click', exportCsv);
+  $('rg-delete-session').addEventListener('click', deleteCurrentSession);
+
+  $('rg-precision-input').addEventListener('input', e => {
+    currentPrecision = e.target.value;
+  });
+
+  $('rg-photo-input').addEventListener('change', async e => {
+    const files = Array.from(e.target.files || []);
+    for (const f of files){
+      try {
+        const b64 = await compressImage(f);
+        currentPhotos.push(b64);
+      } catch(err){ console.error('photo error', err); }
+    }
+    renderPhotoThumbs();
+    e.target.value = '';
+  });
+
+  $('rg-lightbox-close').addEventListener('click', closeLightbox);
+  $('rg-lightbox').addEventListener('click', e => {
+    if (e.target.id === 'rg-lightbox') closeLightbox();
+  });
+
+  document.querySelectorAll('.rg-tab').forEach(t => {
+    t.addEventListener('click', async () => {
+      document.querySelectorAll('.rg-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      const tab = t.getAttribute('data-tab');
+      $('rg-tab-new').style.display = tab === 'new' ? 'block' : 'none';
+      $('rg-tab-history').style.display = tab === 'history' ? 'block' : 'none';
+      if (tab === 'history') await renderHistory();
+    });
+  });
+
+  renderHistory();
+})();
+</script>
